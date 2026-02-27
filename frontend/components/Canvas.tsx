@@ -4,12 +4,26 @@ import { Stage, Layer, Line, Rect, Circle, Arrow } from "react-konva"
 import { useToolStore } from "@/store/useToolStore"
 import { useState, useEffect } from "react"
 import { nanoid } from "nanoid"
+import { io, Socket } from 'socket.io-client'
 
 export default function Canvas() {
   const tool = useToolStore(s => s.tool)
   const [elements, setElements] = useState<any[]>([])
   const [draft, setDraft] = useState<any>(null)
   const [size, setSize] = useState({ width: 0, height: 0 })
+  const [socket, setSocket] = useState<Socket | null>(null)
+
+  useEffect(() => {
+    const newSocket = io('http://localhost:5000')
+    newSocket.emit('join-room', 'room1')
+    newSocket.on('draw', (data: any) => {
+      setElements(prev => [...prev, data.element])
+    })
+    setSocket(newSocket)
+    return () => {
+      newSocket.disconnect()
+    }
+  }, [])
 
   useEffect(() => {
     const updateSize = () =>
@@ -116,6 +130,7 @@ export default function Canvas() {
 
   const handleUp = () => {
     if (!draft) return
+    socket?.emit('draw', { roomId: 'room1', element: draft })
     setElements(prev => [...prev, draft])
     setDraft(null)
   }
